@@ -13,14 +13,14 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 class Walls:
     pass
 
-class Enemy:
+class Enemy: # -a
     def __init__(self, pos, vertical_patrol, min, max):
         self.pos = pos
         if vertical_patrol:
-            self.angle = 90
+            self.base_angle = 90
             self.home_pos = pygame.math.Vector2(pos.x, (min + max)/2)
         else:
-            self.angle = 0
+            self.base_angle = 0
             self.home_pos = pygame.math.Vector2((min + max)/2, pos.y)
                     
         self.min = min
@@ -29,7 +29,11 @@ class Enemy:
         self.chase_speed = 15
         self.range = 100
         self.chase_range = 300
-        
+        self.is_patrol = True
+        self.rotating = False
+        self.returning = False
+        self.angle = self.base_angle
+        self.turn_speed = 5
         
     def act(self):
         self.forward = pygame.Math.Vector2(
@@ -38,8 +42,77 @@ class Enemy:
         )
         
         distanceToPlayer = self.pos.distance_to(player_pos)
+        to_player = (player_pos - self.pos).normalize()
         
-        if distanceToPlayer <= self.range and 
+        # actions
+        if self.returning:
+            self.return_home()
+            return
+        if not self.rotating:
+            if self.is_patrol:
+                self.patrol(distanceToPlayer, to_player)
+            else:
+                self.chase()
+        else:
+            self.rotate()
+        
+    def patrol(self, distanceToPlayer, to_player):
+        if distanceToPlayer <= self.range and self.forward.dot(to_player) > 0.7:
+            patrol = False
+            return
+        else:
+            # Move forward
+            self.pos += self.patrol_speed * self.forward
+            
+            if self.vertical_patrol:
+                # snap back upper bound
+                if self.pos.y > self.max:
+                    self.pos.y = self.max
+                    self.rotating = True
+                # snap back lower bound
+                elif self.pos.y < self.min:
+                    self.pos.y = self.min
+                    self.rotating = True
+            else:
+                # same but horiz
+                if self.pos.x > self.max:
+                    self.pos.x = self.max
+                    self.rotating = True
+                # same but horiz
+                elif self.pos.x < self.min:
+                    self.pos.x = self.min
+                    self.rotating = True
+    
+    def chase(self, distanceToPlayer, to_player):
+            # 1. Check vision loss OR if enemy exceeded max chase distance from home
+        distance_from_home = self.pos.distance_to(self.home_pos)
+        
+        in_vision = (distanceToPlayer <= self.range) and (self.forward.dot(to_player) > 0.7)
+        out_of_chase_range = distance_from_home > self.chase_range
+        
+        if not in_vision or out_of_chase_range:
+            self.chasing = False
+            self.returning = True
+            return
+
+        # cross to rotate towards player
+        cross = self.forward.cross(to_player)
+        
+        if cross > 0:
+            self.angle += self.turn_speed
+        elif cross < 0:
+            self.angle -= self.turn_speed
+
+        # update forward
+        self.forward = pygame.Math.Vector2(
+            cos(radians(self.angle)),
+            -sin(radians(self.angle))
+        )
+
+        self.pos += self.forward * self.chase_speed  
+    
+    def return_home()
+            
         
 
 class Keys:
