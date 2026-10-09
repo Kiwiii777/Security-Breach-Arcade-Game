@@ -30,10 +30,11 @@ class Enemy: # -a
         self.range = 100
         self.chase_range = 300
         self.is_patrol = True
-        self.rotating = False
+        self.is_rotating = False
         self.returning = False
         self.angle = self.base_angle
         self.turn_speed = 5
+        self.cooldown = 30
         
     def act(self):
         self.forward = pygame.Math.Vector2(
@@ -84,15 +85,18 @@ class Enemy: # -a
                     self.rotating = True
     
     def chase(self, distanceToPlayer, to_player):
-            # 1. Check vision loss OR if enemy exceeded max chase distance from home
         distance_from_home = self.pos.distance_to(self.home_pos)
         
         in_vision = (distanceToPlayer <= self.range) and (self.forward.dot(to_player) > 0.7)
         out_of_chase_range = distance_from_home > self.chase_range
         
+        if distanceToPlayer <= 30 and self.cooldown >= 0:
+            self.shoot()
+        
         if not in_vision or out_of_chase_range:
             self.chasing = False
             self.returning = True
+            self.cooldown = 30
             return
 
         # cross to rotate towards player
@@ -109,12 +113,54 @@ class Enemy: # -a
             -sin(radians(self.angle))
         )
 
-        self.pos += self.forward * self.chase_speed  
-    
-    def return_home()
-            
+        self.pos += self.forward * self.chase_speed 
         
+        self.cooldown -= 1 
+    
+    def rotating(self):
+        if self.angle != self.base_angle:
+            self.angle += self.turn_speed
+        else:
+            self.is_returning = False
+            self.is_patrol = True
+    
+    def return_home(self):
+        direction = self.home_pos - self.pos
+        distance = direction.length()
+        arrival_threshold = 2.0
 
+        if distance > arrival_threshold:
+            to_home = direction.normalize()
+            cross = self.forward.cross(to_home)
+
+            if cross > 0:
+                self.angle += self.turn_speed
+            elif cross < 0:
+                self.angle -= self.turn_speed
+
+            self.forward = pygame.Math.Vector2(
+                cos(radians(self.angle)),
+                -sin(radians(self.angle))
+            )
+
+            self.pos += to_home * self.patrol_speed
+        
+        else:
+            self.returning = False
+            self.is_rotating = True
+            
+    def shoot(self):
+        net.append(Net(self.pos, self.forward))
+
+class Net:
+    def __init__(self, pos, forward):
+        self.pos = pos
+        self.forward = forward
+        self.speed = 23
+    
+    def move(self):
+        self.pos += self.speed * self.forward
+        
 class Keys:
     pass
 
