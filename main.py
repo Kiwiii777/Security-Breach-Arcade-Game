@@ -1,4 +1,4 @@
-
+import asyncio
 import pygame
 from math import *
 from random import *
@@ -17,18 +17,18 @@ OUTPUT_FILE = "walls.txt"
 font = pygame.font.SysFont(None, 48)
 blackout_text = ""
 
-pursuing = pygame.mixer.Sound("pursuing.mp3")
+pursuing = pygame.mixer.Sound("pursuing.ogg")
 pursuing.set_volume(0.5)
-loose = pygame.mixer.Sound("loose.mp3")
+loose = pygame.mixer.Sound("loose.ogg")
 loose.set_volume(0.5)
-found = pygame.mixer.Sound("found.mp3")
+found = pygame.mixer.Sound("found.ogg")
 found.set_volume(0.5)
-lose = pygame.mixer.Sound("lose.mp3")
+lose = pygame.mixer.Sound("lose.ogg")
 lose.set_volume(0.5)
-win = pygame.mixer.Sound("win.mp3")
+win = pygame.mixer.Sound("win.ogg")
 win.set_volume(0.5)
 
-pygame.mixer.music.load("background.mp3")
+pygame.mixer.music.load("background.ogg")
 pygame.mixer.music.set_volume(0.2)
 pygame.mixer.music.play(-1)
 
@@ -507,11 +507,12 @@ class Doors:
         self.rect.center = (round(self.pos.x), round(self.pos.y))
         screen.blit(self.image, self.rect.move(offset))
 
-key_items = [
+KEYS = [
     Keys((1156, 52)), Keys((670, 41)), Keys((676, 282)), Keys((543, 510)), Keys((400, 360)), Keys((363, 549))
 ]
+key_items = list(KEYS)
 
-doors = [
+DOORS = [
     Doors((1198, 442), vertical=True),
     Doors((879, 447), vertical=True),
     Doors((637, 196), vertical=True),
@@ -520,6 +521,7 @@ doors = [
     Doors((185,141), vertical=False),
     Doors((120, 80), vertical=True)
 ]
+doors = list(DOORS)
 
 running = True
 image = pygame.image.load(IMAGE)
@@ -535,136 +537,152 @@ blackout_until = 0
 
 loose.play()
 
-while running:
-    interact_pressed = False
+async def main():
+    global running
+    global map_position_x, map_position_y
+    global key_count
+    global blackout_until, blackout_text
+    global key_items, doors
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+    while running:
+        interact_pressed = False
 
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_e:
-            interact_pressed = True
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
 
-    keys = pygame.key.get_pressed()   
-    if keys[pygame.K_LEFT] or keys[pygame.K_a]:
-        map_position_x -= 10
-    elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
-        map_position_x += 10
-    elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
-        map_position_y += 10
-    elif keys[pygame.K_UP] or keys[pygame.K_w]:
-        map_position_y -= 10
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_e:
+                interact_pressed = True
 
-    map_position_x = max(-480, min(0, map_position_x))
-    map_position_y = max(-100, min(5, map_position_y))
+        keys = pygame.key.get_pressed()   
+        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+            map_position_x -= 10
+        elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+            map_position_x += 10
+        elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
+            map_position_y += 10
+        elif keys[pygame.K_UP] or keys[pygame.K_w]:
+            map_position_y -= 10
 
-    solid_rects = walls + [door.rect for door in doors]
-    player.move(pygame.key.get_pressed(), solid_rects, map_rect)
+        map_position_x = max(-480, min(0, map_position_x))
+        map_position_y = max(-100, min(5, map_position_y))
 
-    # collect keys
-    for key in key_items[:]:
-        if player.rect.colliderect(key.rect):
-            key_items.remove(key)
-            key_count += 1
+        solid_rects = walls + [door.rect for door in doors]
+        player.move(pygame.key.get_pressed(), solid_rects, map_rect)
 
-    # interact with nearby door
-    nearby_door = None
-    nearest_distance = DOOR_INTERACT_DISTANCE
+        # collect keys
+        for key in list(key_items):
+            if player.rect.colliderect(key.rect):
+                key_items.remove(key)
+                key_count += 1
 
-    for door in doors:
-        distance = player.pos.distance_to(door.pos)
+        # interact with nearby door
+        nearby_door = None
+        nearest_distance = DOOR_INTERACT_DISTANCE
 
-        if distance <= nearest_distance:
-            nearby_door = door
-            nearest_distance = distance
+        for door in doors:
+            distance = player.pos.distance_to(door.pos)
 
-    # open door
-    if interact_pressed and nearby_door is not None:
-        if key_count >= 1:
-            key_count -= 1
-            doors.remove(nearby_door)
-            nearby_door = None
+            if distance <= nearest_distance:
+                nearby_door = door
+                nearest_distance = distance
 
-    map_position_x = max(-480, min(0, WINDOW_SIZE[0] // 2 - int(player.pos.x)))
-    map_position_y = max(-100, min(5, WINDOW_SIZE[1] // 2 - int(player.pos.y)))
+        # open door
+        if interact_pressed and nearby_door is not None:
+            if key_count >= 1:
+                key_count -= 1
+                doors.remove(nearby_door)
+                nearby_door = None
 
-    screen.blit(image, (map_position_x, map_position_y))
-    for enemy in enemies:
-        enemy.act()
-        if enemy.pos.distance_to(player.pos) < 25:
-            player.reset()
-            for e in enemies:
-                e.reset()
+        map_position_x = max(-480, min(0, WINDOW_SIZE[0] // 2 - int(player.pos.x)))
+        map_position_y = max(-100, min(5, WINDOW_SIZE[1] // 2 - int(player.pos.y)))
+
+        screen.blit(image, (map_position_x, map_position_y))
+        for enemy in enemies:
+            enemy.act()
+            if enemy.pos.distance_to(player.pos) < 25:
+                player.reset()
                 lose.play()
-            blackout_until = pygame.time.get_ticks() + 7500
-            break
+                enemy.pos = enemy.home_pos
+                key_items = list(KEYS)
+                doors = list(DOORS)
+                blackout_until = pygame.time.get_ticks() + 7500
+                break
 
-    offset = (map_position_x, map_position_y)
-    screen.blit(image, offset)
-    for wall in walls:
-        screen_rect = wall.move(map_position_x, map_position_y)
-        s = pygame.Surface((wall.width, wall.height), pygame.SRCALPHA)
-        s.fill((255, 255, 255, 0))
-        screen.blit(s, screen_rect.topleft)
-        # outlines for tweaking and troubleshooting if needed so fun!
-        # pygame.draw.rect(screen, (255, 255, 255, 0), screen_rect, 2)
+        offset = (map_position_x, map_position_y)
+        screen.blit(image, offset)
+        for wall in walls:
+            screen_rect = wall.move(map_position_x, map_position_y)
+            s = pygame.Surface((wall.width, wall.height), pygame.SRCALPHA)
+            s.fill((255, 255, 255, 0))
+            screen.blit(s, screen_rect.topleft)
+            # outlines for tweaking and troubleshooting if needed so fun!
+            # pygame.draw.rect(screen, (255, 255, 255, 0), screen_rect, 2)
 
-    # draw enemy and vision
-    for enemy in enemies:
-        enemy.draw_vision(screen, offset)
-    for enemy in enemies:
-        enemy.draw(screen, offset)
+        # draw enemy and vision
+        for enemy in enemies:
+            enemy.draw_vision(screen, offset)
+        for enemy in enemies:
+            enemy.draw(screen, offset)
 
-    # draw keys
-    for key in key_items:
-        key.draw(screen, offset)
+        # draw keys
+        for key in key_items:
+            key.draw(screen, offset)
 
-    # draw doors
-    for door in doors:
-        door.draw(screen, offset)
+        # draw doors
+        for door in doors:
+            door.draw(screen, offset)
 
-    # Display key count
-    key_text = key_font.render(f"Keys: {key_count}", True, (255, 255, 255))
-    screen.blit(key_text, (20, 20))
+        # Display key count
+        key_text = key_font.render(f"Keys: {key_count}", True, (255, 255, 255))
+        screen.blit(key_text, (20, 20))
 
-    # display door interaction prompt
-    if nearby_door is not None:
-        if key_count >= 1:
-            prompt = "Press E to unlock door"
-        else:
-            prompt = "You need a key!"
+        # display door interaction prompt
+        if nearby_door is not None:
+            if key_count >= 1:
+                prompt = "Press E to unlock door"
+            else:
+                prompt = "You need a key!"
 
-        prompt_surface = interaction_font.render(
-            prompt, True, (255, 255, 255)
-        )
-
-        prompt_rect = prompt_surface.get_rect(
-            center=(
-                round(nearby_door.pos.x + map_position_x),
-                round(nearby_door.pos.y + map_position_y - 35)
+            prompt_surface = interaction_font.render(
+                prompt, True, (255, 255, 255)
             )
-        )
 
-        background_rect = prompt_rect.inflate(16, 10)
-        pygame.draw.rect(screen, (30, 30, 30), background_rect, border_radius=6)
-        screen.blit(prompt_surface, prompt_rect)
+            prompt_rect = prompt_surface.get_rect(
+                center=(
+                    round(nearby_door.pos.x + map_position_x),
+                    round(nearby_door.pos.y + map_position_y - 35)
+                )
+            )
 
-    player.draw(screen, offset)
-    print(player_pos)
-    if pygame.time.get_ticks() < blackout_until:
-        screen.fill((0, 0, 0))
-        text = font.render(blackout_text, True, (255, 255, 255))
-        screen.blit(text, text.get_rect(center=(WINDOW_SIZE[0] // 2, WINDOW_SIZE[1] // 2)))
+            background_rect = prompt_rect.inflate(16, 10)
+            pygame.draw.rect(screen, (30, 30, 30), background_rect, border_radius=6)
+            screen.blit(prompt_surface, prompt_rect)
+
+        player.draw(screen, offset)
+        print(player_pos)
+        if pygame.time.get_ticks() < blackout_until:
+            screen.fill((0, 0, 0))
+            text = font.render(blackout_text, True, (255, 255, 255))
+            screen.blit(
+                text,
+                text.get_rect(
+                    center=(WINDOW_SIZE[0] // 2, WINDOW_SIZE[1] // 2)
+                )
+            )
+            pygame.display.flip()
+            await asyncio.sleep(1 / 30)
+            continue
+
+        if player_pos.x <= 103 and player_pos.y <= 100:
+            blackout_text = "You won!"
+            blackout_until = pygame.time.get_ticks() + 7500
+            win.play()
+            player.reset()
+            
         pygame.display.flip()
-        pygame.time.Clock().tick(60)
-        continue
-    if (player_pos.x <= 103 and player_pos.y <= 100):
-        blackout_text = "You won!"
-        blackout_until = pygame.time.get_ticks() + 7500
-        win.play()
-        player.reset()
+        await asyncio.sleep(1 / 30)
 
-    pygame.display.flip()
-    pygame.time.Clock().tick(30)
+    pygame.quit()
 
-pygame.quit()
+asyncio.run(main())
