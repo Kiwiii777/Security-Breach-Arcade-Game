@@ -28,6 +28,7 @@ lose.set_volume(0.5)
 win = pygame.mixer.Sound("win.ogg")
 win.set_volume(0.5)
 voice_channel = pygame.mixer.Channel(1)
+lose_channel = pygame.mixer.Channel(2)
 
 pygame.mixer.music.load("background.ogg")
 pygame.mixer.music.set_volume(0.2)
@@ -116,7 +117,7 @@ class Player:
     def __init__(self, pos):
         self.pos = pygame.math.Vector2(pos)
         self.start = pygame.math.Vector2(pos)
-        self.speed = 15
+        self.speed = 7.5
         self.size = 20
         self.rect = pygame.Rect(0, 0, self.size, self.size)
         self.rect.center = self.pos
@@ -216,8 +217,8 @@ class Enemy: #-a
 
         self.min = min_val
         self.max = max_val
-        self.patrol_speed = 5
-        self.chase_speed = 16.5
+        self.patrol_speed = 2.5
+        self.chase_speed = 8.25
         self.range = 200
         self.vision_angle = 44.4
         self.chase_range = 300
@@ -225,7 +226,7 @@ class Enemy: #-a
         self.is_rotating = False
         self.returning = False
         self.angle = self.base_angle
-        self.turn_speed = 5
+        self.turn_speed = 2.5
 
         self.pursuing_cooldown = 0
         self.lose_cooldown = 0
@@ -597,10 +598,7 @@ async def main():
             if enemy.pos.distance_to(player.pos) < 25:
                 now = pygame.time.get_ticks()
                 player.reset()
-                
-                if now >= enemy.lose_cooldown:
-                    if not voice_channel.get_busy():
-                        voice_channel.play(lose)
+                lose_channel.play(lose)
                 
                 enemy.pos = enemy.home_pos
                 key_items = list(KEYS)
