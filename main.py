@@ -138,6 +138,9 @@ class Player:
         self.rect = pygame.Rect(0, 0, self.size, self.size)
         self.rect.center = self.pos
 
+        self.image = pygame.image.load("player.png").convert_alpha()
+        self.image = pygame.transform.scale(self.image, (40, 40))
+
     def move(self, keys, walls, bounds):
         dx = (keys[pygame.K_d] or keys[pygame.K_RIGHT]) - (keys[pygame.K_a] or keys[pygame.K_LEFT])
         dy = (keys[pygame.K_s] or keys[pygame.K_DOWN]) - (keys[pygame.K_w] or keys[pygame.K_UP])
@@ -170,7 +173,8 @@ class Player:
         self.rect.center = self.pos
 
     def draw(self, screen, offset):
-        pygame.draw.rect(screen, (0, 120, 255), self.rect.move(offset))
+        image_rect = self.image.get_rect(center=self.rect.center)
+        screen.blit(self.image, image_rect.move(offset))
 
 class Enemy: #-a
     def __init__(self, pos, vertical_patrol, min_val, max_val):
