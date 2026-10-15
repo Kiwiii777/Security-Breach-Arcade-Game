@@ -27,6 +27,7 @@ lose = pygame.mixer.Sound("lose.ogg")
 lose.set_volume(0.5)
 win = pygame.mixer.Sound("win.ogg")
 win.set_volume(0.5)
+voice_channel = pygame.mixer.Channel(1)
 
 pygame.mixer.music.load("background.ogg")
 pygame.mixer.music.set_volume(0.2)
@@ -104,34 +105,9 @@ key_count = 0
 DOOR_INTERACT_DISTANCE = 60
 interaction_font = pygame.font.SysFont(None, 28)
 key_font = pygame.font.SysFont(None, 32)
-drawing = False      # Tracks if mouse is currently held down
-start_pos = None     # (x, y) where drag started
-current_pos = None   # Current mouse position during drag
 
 def screen_to_map(pos):
     return (pos[0] - map_position_x, pos[1] - map_position_y)
-
-def get_normalized_rect(p1, p2):
-    """Generates a pygame.Rect with a fixed width or height of 20px based on drag direction."""
-    WALL_THICKNESS = 20
-
-    dx = p2[0] - p1[0]
-    dy = p2[1] - p1[1]
-
-    # If horizontal drag is larger, lock height to 20
-    if abs(dx) >= abs(dy):
-        x = min(p1[0], p2[0])
-        y = p1[1] - (WALL_THICKNESS // 2)  # Centers the 20px thickness on the mouse Y line
-        w = max(abs(dx), 1)
-        h = WALL_THICKNESS
-    # If vertical drag is larger, lock width to 20
-    else:
-        x = p1[0] - (WALL_THICKNESS // 2)  # Centers the 20px thickness on the mouse X line
-        y = min(p1[1], p2[1])
-        w = WALL_THICKNESS
-        h = max(abs(dy), 1)
-
-    return pygame.Rect(x, y, w, h)
 
 class Walls:
     pass
@@ -251,6 +227,10 @@ class Enemy: #-a
         self.angle = self.base_angle
         self.turn_speed = 5
 
+        self.pursuing_cooldown = 0
+        self.lose_cooldown = 0
+        self.found_cooldown = 0
+
     def has_line_of_sight(self, target_pos):
         # checks for vision through walls and doors
         start = (round(self.pos.x), round(self.pos.y))
@@ -275,8 +255,16 @@ class Enemy: #-a
                 self.is_patrol = False
                 self.returning = False
                 self.is_rotating = False
-                found.play()
+
+                now = pygame.time.get_ticks()
+
+                if now >= self.found_cooldown:
+                    if not voice_channel.get_busy():
+                        voice_channel.play(found)
+                        self.found_cooldown = now + 1500
+
                 return True
+            
         return False
 
     def act(self):
@@ -345,7 +333,13 @@ class Enemy: #-a
         out_of_chase_range = distance_from_home > self.chase_range
 
         if not in_vision or out_of_chase_range:
-            pursuing.play()
+            now = pygame.time.get_ticks()
+
+            if now >= self.pursuing_cooldown:
+                if not voice_channel.get_busy():
+                    voice_channel.play(pursuing)
+                    self.pursuing_cooldown = now + 1500
+
             self.is_patrol = True
             self.returning = True
             return
@@ -601,8 +595,13 @@ async def main():
         for enemy in enemies:
             enemy.act()
             if enemy.pos.distance_to(player.pos) < 25:
+                now = pygame.time.get_ticks()
                 player.reset()
-                lose.play()
+                
+                if now >= enemy.lose_cooldown:
+                    if not voice_channel.get_busy():
+                        voice_channel.play(lose)
+                
                 enemy.pos = enemy.home_pos
                 key_items = list(KEYS)
                 doors = list(DOORS)
@@ -660,7 +659,6 @@ async def main():
             screen.blit(prompt_surface, prompt_rect)
 
         player.draw(screen, offset)
-        print(player_pos)
         if pygame.time.get_ticks() < blackout_until:
             screen.fill((0, 0, 0))
             text = font.render(blackout_text, True, (255, 255, 255))
