@@ -1,7 +1,7 @@
+
 build/
 __pycache__/
 *.pyc
-
 docs/*.apk
 docs/*.tar.gz
 pygbag-build.log
