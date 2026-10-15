@@ -648,6 +648,6 @@ while running:
         player.reset()
 
     pygame.display.flip()
-    pygame.time.Clock().tick(60)
+    pygame.time.Clock().tick(30)
 
 pygame.quit()
