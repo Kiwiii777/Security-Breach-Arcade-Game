@@ -98,8 +98,7 @@ walls = [
     pygame.Rect(199, 392, 20, 50),
     pygame.Rect(206, 391, 73, 20)
 ]           # Stores finalized pygame.Rect objects
-key_items = []
-doors = []
+
 key_count = 0
 
 DOOR_INTERACT_DISTANCE = 60
@@ -487,22 +486,40 @@ class Keys:
     def __init__(self, pos):
         self.pos = pygame.math.Vector2(pos)
         self.image = pygame.image.load("key.png").convert_alpha()
-        self.rect = self.image.get_rect(center=self.pos)
+        self.image = pygame.transform.scale(self.image, (24, 24))
+        self.rect = self.image.get_rect(center=self.pos).inflate(-20, -20)
 
     def draw(self, screen, offset):
         self.rect.center = (round(self.pos.x), round(self.pos.y))
-        screen.blit(self.image, self.rect.move(offset))
+        image_rect = self.image.get_rect(center=self.rect.center)
+        screen.blit(self.image, image_rect.move(offset))
 
 
 class Doors:
-    def __init__(self, pos):
+    def __init__(self, pos, vertical=False):
         self.pos = pygame.math.Vector2(pos)
         self.image = pygame.image.load("door.png").convert_alpha()
+        if vertical:
+            self.image = pygame.transform.rotate(self.image, 90)
         self.rect = self.image.get_rect(center=self.pos)
 
     def draw(self, screen, offset):
         self.rect.center = (round(self.pos.x), round(self.pos.y))
         screen.blit(self.image, self.rect.move(offset))
+
+key_items = [
+    Keys((1156, 52)), Keys((670, 41)), Keys((676, 282)), Keys((543, 510)), Keys((400, 360)), Keys((363, 549))
+]
+
+doors = [
+    Doors((1198, 442), vertical=True),
+    Doors((879, 447), vertical=True),
+    Doors((637, 196), vertical=True),
+    Doors((706,495), vertical=False),
+    Doors((164,424), vertical=False),
+    Doors((185,141), vertical=False),
+    Doors((120, 80), vertical=True)
+]
 
 running = True
 image = pygame.image.load(IMAGE)
