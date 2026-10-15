@@ -669,7 +669,7 @@ async def main():
                 )
             )
             pygame.display.flip()
-            await asyncio.sleep(1 / 30)
+            await asyncio.sleep(0)
             continue
 
         if player_pos.x <= 103 and player_pos.y <= 100:
@@ -679,7 +679,7 @@ async def main():
             player.reset()
             
         pygame.display.flip()
-        await asyncio.sleep(1 / 30)
+        await asyncio.sleep(0)
 
     pygame.quit()
 
